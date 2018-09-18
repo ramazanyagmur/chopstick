@@ -1,10 +1,22 @@
+# chopstick.py Parser for cfgmml format
+# It is aimed for parsing cfgmml files to be converted to a column based format. 
+# It needs a default file "infiledef.txt" for output to be configured and standardized for multiple input files. 
+# And will need a prewrite filler file "inprefill.txt" to make extra column on an MOC based on another MOC. 
+# Then will read all files in in/ directory and output to out\ directory.
+# 
+# Project start date : June 2018  , Ramazan YAGMUR <ramazan.yagmur@gmail.com>
+# 
+# Licensed under BSD 3-Clause "New" or "Revised" License
+
 import glob
 
+# Checks for comments , lines starting with / (slash) are comments.
 def lineisvalid(line):
 	result=1
 	if line[0:2]=="//": result=0
 	return result
 
+# Gets MOC of the line , MOC for  ADD UCELLSETUP: would be ADDUCELLSETUP
 def linegetmoc(line):
 	linesplit=line.split(":")
 	linemoc=linesplit[0]
@@ -12,6 +24,7 @@ def linegetmoc(line):
 	linemoc.strip()
 	return linemoc
 
+# Strip the line ends from ; (semicolon)
 def linestrip(line):
 	linesplit=line[0:-2].split(":")
 	if len(linesplit)>=2:
@@ -19,11 +32,13 @@ def linestrip(line):
 	else:
 		linestr=linesplit[0]
 	return linestr
-	
+
+# Returns parameters as list	CELLID=1234,CELLNAME="TEST11" --> [CELLID=1234,CELLNAME="TEST11"]
 def linetoparamcouple(line):
 	paramcouple=linestrip(line).split(",")
 	return paramcouple
 
+# Gets the line and converts to dictionary list     CELLID=1234,CELLNAME="TEST11" --> [{CELLID,1234},{CELLNAME,TEST11}]
 def linetoparamval(line):
 	paramcouple=linetoparamcouple(line)
 	ps={}
@@ -39,6 +54,7 @@ def linetoparamval(line):
 		ps.update(p)
 	return ps
 
+# Process every line and create a list of MOC dictionary lists  
 def rawdatatomoc(rawdata):
 	mocold=""
 	params={}
@@ -52,7 +68,8 @@ def rawdatatomoc(rawdata):
 			else:
 				params[moc]=prms
 	return params
-	
+
+# Write MOC titles to MOC output files	
 def titlestofile(paramsdef):
 	for mocdef, prmsdef in paramsdef.items():
 		file=open("out\\" + mocdef + ".txt","w")
@@ -61,7 +78,8 @@ def titlestofile(paramsdef):
 			file.write(key+"\t")
 		file.write("\n")
 		file.close
-		
+
+# Print out all MOC params to output files		
 def paramstofile(paramsdef,params):
 	for mocdef, prmsdef in paramsdef.items():
 		file=open("out\\" + mocdef + ".txt","a")
@@ -81,6 +99,7 @@ def paramstofile(paramsdef,params):
 				pass
 		file.close
 
+# Adds BSCNAME dict to all MOC lists , and to every line
 def addbscname(params):
 	pbsc={}
 	pbsc["BSCNAME"]=params["SETSYS"][0]["SYSOBJECTID"]
@@ -88,6 +107,7 @@ def addbscname(params):
 		for p1 in params[moc]:
 			p1.update(pbsc)
 
+# Function for adding a new dict list to an MOC
 def addcol(params,moc,col,val):
 	pcol={}
 	try:
@@ -96,7 +116,8 @@ def addcol(params,moc,col,val):
 			p1.update(pcol)
 	except:
 		pass
-		
+
+# Function for updating values for an MOC column from another MOC based on matching 2 other columns		
 def updatecol(params,moc,targetcol,targetref1,targetref2,refmoc,refcol1,refcol2,refresult):
 	cin={}
 	try:
@@ -112,7 +133,8 @@ def updatecol(params,moc,targetcol,targetref1,targetref2,refmoc,refcol1,refcol2,
 					p1.update(cin)
 	except:
 		pass
-		
+
+# Create a ADDUCELLPARAM MOC with the inclusion of lists from ADDUCELLSETUP
 def createcellparam3g(params):
 	try:
 		params["ADDUCELLPARAM"]=[]
@@ -124,6 +146,8 @@ def createcellparam3g(params):
 			params["ADDUCELLPARAM"].append(cell)
 	except:
 		pass
+		
+# Create a ADDGCELLPARAM MOC with the inclusion of lists from ADDGCELL
 def createcellparam2g(params):
 	try:
 		params["ADDGCELLPARAM"]=[]
