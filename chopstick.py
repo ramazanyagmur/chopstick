@@ -85,18 +85,23 @@ def paramstofile(paramsdef,params):
 		file=open("out\\" + mocdef + ".txt","a")
 
 		#write values
-		for p1 in paramsdef[mocdef]:
-			try:
-				for i in range(len(params[mocdef])):
-					for key,val in p1.items():
-						try:
-							val2=params[mocdef][i][key]
-						except:
-							val2=""
-						file.write(val2+"\t")
-					file.write("\n")
-			except:
-				pass
+		try:
+			for p1 in paramsdef[mocdef]:
+				try:
+					for i in range(len(params[mocdef])):
+						for key,val in p1.items():
+							try:
+								if key in params[mocdef][i] :
+									val2=params[mocdef][i][key]
+							except:
+								val2=""
+							finally:
+								file.write(val2+"\t")
+						file.write("\n")
+				except:
+					pass
+		except:
+			print("No MOC:",mocdef)
 		file.close
 
 # Adds BSCNAME dict to all MOC lists , and to every line
@@ -108,58 +113,48 @@ def addbscname(params):
 			p1.update(pbsc)
 
 # Function for adding a new dict list to an MOC
-def addcol(params,moc,col,val):
-	pcol={}
+def add_col(params,moc,col,val):
 	try:
-		pcol["YES"]="YES"
 		for p1 in params[moc]:
-			p1.update(pcol)
+			if col not in p1: 
+				p1.update({col:val})
 	except:
 		pass
 
 # Function for updating values for an MOC column from another MOC based on matching 2 other columns		
 def updatecol(params,moc,targetcol,targetref1,targetref2,refmoc,refcol1,refcol2,refresult):
-	cin={}
+	add_col(params,moc,targetcol,"")
 	try:
 		for p1 in params[moc]:
 			t1=p1[targetref1]
 			t2=p1[targetref2]
-			for cell in params[refmoc]:
-				if cell[refcol1]==t1 and cell[refcol2]==t2 :
-					if refresult=="1":
-						cin[targetcol]="1"
-					else:
-						cin[targetcol]=cell[refresult]	
-					p1.update(cin)
+			for p2 in params[refmoc]:
+				if p2[refcol1]==t1 and p2[refcol2]==t2 :
+					p1[targetcol]=p2[refresult]
 	except:
 		pass
 
-# Create a ADDUCELLPARAM MOC with the inclusion of lists from ADDUCELLSETUP
-def createcellparam3g(params):
+# Function for updating values as count of found values for an MOC column from another MOC based on matching 2 other columns		
+def updatecol_bycount(params,moc,targetcol,targetref1,targetref2,refmoc,refcol1,refcol2):
+	add_col(params,moc,targetcol,"")
 	try:
-		params["ADDUCELLPARAM"]=[]
-		for p1 in params["ADDUCELLSETUP"]:
-			cell={}
-			cell["BSCNAME"]=p1["BSCNAME"]
-			cell["CELLID"]=p1["CELLID"]
-			cell["CELLNAME"]=p1["CELLNAME"]
-			params["ADDUCELLPARAM"].append(cell)
+		for p1 in params[moc]:
+			t1=p1[targetref1]
+			t2=p1[targetref2]
+			count=0
+			for p2 in params[refmoc]:
+				if p2[refcol1]==t1 and p2[refcol2]==t2 :
+					count+=1
+			p1[targetcol]=str(count)
 	except:
 		pass
 		
-# Create a ADDGCELLPARAM MOC with the inclusion of lists from ADDGCELL
-def createcellparam2g(params):
+def copy_moc(params,moc1,moc2):	
 	try:
-		params["ADDGCELLPARAM"]=[]
-		for p1 in params["ADDGCELL"]:
-			cell={}
-			cell["BSCNAME"]=p1["BSCNAME"]
-			cell["CELLID"]=p1["CELLID"]
-			cell["CELLNAME"]=p1["CELLNAME"]
-			params["ADDGCELLPARAM"].append(cell)
+		params[moc2]=params[moc1]
 	except:
 		pass
-		
+			
 # MainApp
 
 #Read Definition Config
@@ -189,15 +184,18 @@ for file1 in mylist:
 	
 	#Further proccess
 	addbscname(params)
-	addcol(params,"ADDGCELL","YES","YES")
-	createcellparam2g(params)
-	createcellparam3g(params)
-	
+		
 	#Proccess PreFill Conditions
 	for pf1 in pfs:
 		pf = pf1.split(",")
-		updatecol(params,pf[0],pf[1],pf[2],pf[3],pf[4],pf[5],pf[6],pf[7])
-
+		if(pf[0]=="updatecol"):
+			updatecol(params,pf[1],pf[2],pf[3],pf[4],pf[5],pf[6],pf[7],pf[8])
+		if(pf[0]=="updatecol_bycount"):
+			updatecol_bycount(params,pf[1],pf[2],pf[3],pf[4],pf[5],pf[6],pf[7])
+		if(pf[0]=="copy_moc"):
+			copy_moc(params,pf[1],pf[2])
+		if(pf[0]=="add_col"):
+			add_col(params,pf[1],pf[2],pf[3])
 	#Write results to files in "out" folder
 	paramstofile(paramsdef,params)
 
